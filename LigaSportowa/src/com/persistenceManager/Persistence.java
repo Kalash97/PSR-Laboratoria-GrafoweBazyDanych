@@ -8,9 +8,13 @@ public interface Persistence {
 	
 	public String findAll(Class<? extends Entity> entity);
 	
-	void delete(Integer id, Class<? extends Entity> entity);
+	public void delete(Integer id, Class<? extends Entity> entity);
 	
-	void update(Integer id, Class<? extends Entity> entity, String fieldName, Object newValue);
+	public void update(Integer id, Class<? extends Entity> entity, String fieldName, Object newValue);
+	
+	public void attach(Integer id1, Integer id2, Class<? extends Entity> entity1, Class<? extends Entity> entity2);
+	
+	public String findAttached(Integer id, Class<? extends Entity> entity);
 	
 	public void exit();
 }

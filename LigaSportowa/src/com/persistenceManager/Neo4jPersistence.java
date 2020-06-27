@@ -1,5 +1,7 @@
 package com.persistenceManager;
 
+import static org.neo4j.driver.internal.types.InternalTypeSystem.TYPE_SYSTEM;
+
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
@@ -118,16 +120,60 @@ public class Neo4jPersistence implements Persistence {
 		} else {
 			cmd += newValue;
 		}
-		
+
 		try (Transaction tx = session.beginTransaction()) {
 			tx.run(cmd);
 			tx.commit();
 			tx.close();
 		}
-		
+
 	}
 
 	private char getFirstLetter(Class<? extends Entity> entity) {
 		return entity.getSimpleName().charAt(0);
 	}
+
+	@Override
+	public void attach(Integer id1, Integer id2, Class<? extends Entity> entity1, Class<? extends Entity> entity2) {
+		String cmd = "MATCH (" + getFirstLetter(entity1) + ":" + entity1.getSimpleName() + ") , ("
+				+ getFirstLetter(entity2) + ":" + entity2.getSimpleName() + ") " + "WHERE " + getFirstLetter(entity1)
+				+ ".id = " + id1 + " AND " + getFirstLetter(entity2) + ".id = " + id2 + " CREATE ("
+				+ getFirstLetter(entity1) + ")-[r:IS_IN]->(" + getFirstLetter(entity2) + ") RETURN type(r)";
+
+		try (Transaction tx = session.beginTransaction()) {
+			tx.run(cmd);
+			tx.commit();
+			tx.close();
+		}
+	}
+
+	@Override
+	public String findAttached(Integer id, Class<? extends Entity> entity) {
+		String res="";
+		
+		String cmd = "MATCH ("+getFirstLetter(entity)+":"+entity.getSimpleName()+")-[r]-(n) "
+		+" WHERE "+getFirstLetter(entity)+".id = " + id 
+		+" RETURN "+getFirstLetter(entity)+", r, n"; 
+		
+		Transaction tx = session.beginTransaction();
+		Result result = tx.run(cmd);
+		while(result.hasNext()) {
+			Record record = result.next();
+			List<Pair<String, Value>> fields = record.fields();
+			for (Pair<String, Value> field : fields) {
+				Value value = field.value();
+				if(TYPE_SYSTEM.NODE().isTypeOf(value)) {
+				res += "Entity type = : " + field.value().asNode().labels() + ", fields = "
+						+ field.value().asNode().asMap() + "\n";
+				}
+				if(TYPE_SYSTEM.RELATIONSHIP().isTypeOf(value)) {
+					res+="RELATIONSHIP = "+field.value().asRelationship().type() + "\n";
+				}
+			}
+		}
+		
+		tx.close();
+		return res;
+	}
+
 }
